@@ -17,6 +17,7 @@ interface AuthContextType {
   signup: (email: string, password: string, username: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateUsername: (username: string) => Promise<void>;
   error: string | null;
 }
 
@@ -55,9 +56,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, []);
 
+  const checkUsernameAvailability = async (username: string): Promise<boolean> => {
+    const usersRef = ref(db, 'users');
+    const snapshot = await get(usersRef);
+    
+    if (snapshot.exists()) {
+      const users = snapshot.val();
+      return !Object.values(users).some((user: any) => 
+        user.username.toLowerCase() === username.toLowerCase()
+      );
+    }
+    return true;
+  };
+
   const signup = async (email: string, password: string, username: string) => {
     try {
       setError(null);
+      
+      // Check username availability
+      const isAvailable = await checkUsernameAvailability(username);
+      if (!isAvailable) {
+        throw new Error('username-exists');
+      }
+      
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
@@ -72,9 +93,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         createdAt: Date.now(),
       });
     } catch (err) {
-      setError((err as Error).message);
-      throw err;
+      const error = err as Error;
+      if (error.message === 'username-exists') {
+        setError('This username is already taken');
+      } else {
+        setError(error.message);
+      }
+      throw error;
     }
+  };
+
+  const updateUsername = async (newUsername: string) => {
+    if (!auth.currentUser || !currentUser) return;
+    
+    // Check username availability (excluding current user)
+    const usersRef = ref(db, 'users');
+    const snapshot = await get(usersRef);
+    
+    if (snapshot.exists()) {
+      const users = snapshot.val();
+      const isUsernameTaken = Object.values(users).some((user: any) => 
+        user.uid !== currentUser.uid && 
+        user.username.toLowerCase() === newUsername.toLowerCase()
+      );
+      
+      if (isUsernameTaken) {
+        throw new Error('username-exists');
+      }
+    }
+    
+    // Update Firebase Auth profile
+    await updateProfile(auth.currentUser, { displayName: newUsername });
+    
+    // Update user record in database
+    await set(ref(db, `users/${currentUser.uid}`), {
+      ...currentUser,
+      username: newUsername,
+    });
+    
+    // Update current user state
+    setCurrentUser(prev => prev ? { ...prev, username: newUsername } : null);
   };
 
   const login = async (email: string, password: string) => {
@@ -103,6 +161,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signup,
     login,
     logout,
+    updateUsername,
     error,
   };
 

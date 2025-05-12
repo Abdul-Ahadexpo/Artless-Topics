@@ -32,6 +32,32 @@ export const createPost = async (userId: string, username: string, imageUrl: str
   }
 };
 
+// Update username in all user's posts
+export const updatePostsUsername = async (userId: string, newUsername: string): Promise<void> => {
+  try {
+    const postsRef = ref(db, 'posts');
+    const snapshot = await get(postsRef);
+    
+    if (snapshot.exists()) {
+      const updates: Record<string, any> = {};
+      
+      snapshot.forEach((childSnapshot) => {
+        const post = childSnapshot.val() as Post;
+        if (post.userId === userId) {
+          updates[`posts/${post.id}/username`] = newUsername;
+        }
+      });
+      
+      if (Object.keys(updates).length > 0) {
+        await update(ref(db), updates);
+      }
+    }
+  } catch (error) {
+    console.error('Error updating posts username:', error);
+    throw error;
+  }
+};
+
 // Get all posts
 export const getAllPosts = async (): Promise<Post[]> => {
   try {
