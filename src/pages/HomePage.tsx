@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { Plus } from 'lucide-react';
 import { getAllPosts } from '../services/postService';
 import { Post } from '../types';
-import ImageUpload from '../components/upload/ImageUpload';
 import PostGrid from '../components/posts/PostGrid';
 import { useAuth } from '../hooks/useAuth';
+import UploadModal from '../components/upload/UploadModal';
+import { motion } from 'framer-motion';
 
 const HomePage: React.FC = () => {
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth();
@@ -24,13 +27,18 @@ const HomePage: React.FC = () => {
     
     fetchPosts();
   }, []);
-  
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {currentUser && (
-        <div className="mb-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-          <ImageUpload />
-        </div>
+        <motion.button
+          onClick={() => setShowUploadModal(true)}
+          className="fixed bottom-6 right-6 z-10 bg-purple-600 text-white rounded-full p-4 shadow-lg hover:bg-purple-700 transition-colors"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          <Plus size={24} />
+        </motion.button>
       )}
       
       <div className="mb-8">
@@ -46,6 +54,11 @@ const HomePage: React.FC = () => {
         posts={posts} 
         loading={loading} 
         emptyMessage="No posts yet. Be the first to share an image!"
+      />
+
+      <UploadModal 
+        isOpen={showUploadModal} 
+        onClose={() => setShowUploadModal(false)} 
       />
     </div>
   );

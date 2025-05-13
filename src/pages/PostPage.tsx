@@ -6,10 +6,12 @@ import { Post } from '../types';
 import PostCard from '../components/posts/PostCard';
 import Button from '../components/ui/Button';
 import { ArrowLeft } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const PostPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<Post | null>(null);
+  const [relatedPosts, setRelatedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -28,7 +30,22 @@ const PostPage: React.FC = () => {
         const snapshot = await get(postRef);
         
         if (snapshot.exists()) {
-          setPost(snapshot.val() as Post);
+          const currentPost = snapshot.val() as Post;
+          setPost(currentPost);
+          
+          // Fetch related posts
+          const allPostsRef = ref(db, 'posts');
+          const allPostsSnapshot = await get(allPostsRef);
+          
+          if (allPostsSnapshot.exists()) {
+            const allPosts = Object.values(allPostsSnapshot.val()) as Post[];
+            const filtered = allPosts
+              .filter(p => p.id !== id)
+              .sort(() => Math.random() - 0.5)
+              .slice(0, 6);
+            
+            setRelatedPosts(filtered);
+          }
         } else {
           setError('Post not found');
         }
@@ -58,19 +75,24 @@ const PostPage: React.FC = () => {
   if (error || !post) {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-          {error || 'Post not found'}
-        </h1>
-        <Button onClick={() => navigate('/')} variant="outline">
-          <ArrowLeft className="mr-2" size={18} />
-          Back to Home
-        </Button>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            {error || 'Post not found'}
+          </h1>
+          <Button onClick={() => navigate('/')} variant="outline">
+            <ArrowLeft className="mr-2" size={18} />
+            Back to Home
+          </Button>
+        </motion.div>
       </div>
     );
   }
   
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Button 
         onClick={() => navigate(-1)} 
         variant="ghost" 
@@ -80,7 +102,35 @@ const PostPage: React.FC = () => {
         Back
       </Button>
       
-      <PostCard post={post} />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="max-w-3xl mx-auto mb-12">
+          <PostCard post={post} showLink={false} />
+        </div>
+        
+        {relatedPosts.length > 0 && (
+          <div className="mt-16">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+              You might also like
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {relatedPosts.map((relatedPost) => (
+                <motion.div
+                  key={relatedPost.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <PostCard post={relatedPost} />
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 };
