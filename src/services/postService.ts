@@ -4,7 +4,7 @@ import { Post, UserLike } from '../types';
 import { format } from 'date-fns';
 
 // Create a new post
-export const createPost = async (userId: string, username: string, imageUrl: string, caption: string): Promise<string> => {
+export const createPost = async (userId: string, username: string, imageUrl: string, caption: string, userPhotoURL?: string): Promise<string> => {
   try {
     const postRef = push(ref(db, 'posts'));
     const postId = postRef.key as string;
@@ -21,7 +21,8 @@ export const createPost = async (userId: string, username: string, imageUrl: str
       createdAt: now,
       likes: 0,
       month,
-      year
+      year,
+      userPhotoURL: userPhotoURL || ''
     };
     
     await set(postRef, post);
