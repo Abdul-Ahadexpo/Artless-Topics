@@ -7,7 +7,7 @@ import {
   updateProfile,
   User as FirebaseUser
 } from 'firebase/auth';
-import { ref, set, get } from 'firebase/database';
+import { ref, set, get, onValue } from 'firebase/database';
 import { auth, db } from '../firebase/config';
 import { User } from '../types';
 
@@ -39,14 +39,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Transform Firebase user to our User type
-        const userData: User = {
-          uid: user.uid,
-          email: user.email || '',
-          username: user.displayName || '',
-          photoURL: user.photoURL || '',
-        };
-        setCurrentUser(userData);
+        // Get additional user data from database
+        const userRef = ref(db, `users/${user.uid}`);
+        const userSnapshot = await get(userRef);
+        
+        if (userSnapshot.exists()) {
+          const dbUserData = userSnapshot.val();
+          const userData: User = {
+            uid: user.uid,
+            email: user.email || '',
+            username: dbUserData.username || user.displayName || '',
+            photoURL: user.photoURL || dbUserData.photoURL || '',
+          };
+          setCurrentUser(userData);
+        } else {
+          // Fallback to Firebase Auth data
+          const userData: User = {
+            uid: user.uid,
+            email: user.email || '',
+            username: user.displayName || '',
+            photoURL: user.photoURL || '',
+          };
+          setCurrentUser(userData);
+        }
       } else {
         setCurrentUser(null);
       }
