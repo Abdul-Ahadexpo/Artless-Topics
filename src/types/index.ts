@@ -15,6 +15,7 @@ export interface Post {
   likes: number;
   month: string;
   year: string;
+  userPhotoURL?: string;
 }
 
 export interface UserLike {
