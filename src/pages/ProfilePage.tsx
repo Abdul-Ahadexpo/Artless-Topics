@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { updateProfile } from 'firebase/auth';
+import { auth } from '../firebase/config';
 import { getUserPosts, getUserLikedPosts, updatePostsUsername } from '../services/postService';
+import { uploadImage } from '../services/imgbbService';
 import { Post } from '../types';
 import PostGrid from '../components/posts/PostGrid';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { useAuth } from '../hooks/useAuth';
-import { User, Heart, Image, Edit2, Check, X } from 'lucide-react';
+import { User, Heart, Image, Edit2, Check, X, Camera, Upload } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const ProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'uploads' | 'likes'>('uploads');
@@ -17,6 +21,8 @@ const ProfilePage: React.FC = () => {
   const [newUsername, setNewUsername] = useState('');
   const [usernameError, setUsernameError] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState('');
   
   const { currentUser, logout, updateUsername } = useAuth();
   const navigate = useNavigate();
@@ -95,6 +101,47 @@ const ProfilePage: React.FC = () => {
     }
   };
   
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentUser || !auth.currentUser) return;
+    
+    // Validate file type and size
+    if (!file.type.startsWith('image/')) {
+      setPhotoError('Please select a valid image file');
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      setPhotoError('Image size must be less than 5MB');
+      return;
+    }
+    
+    setIsUploadingPhoto(true);
+    setPhotoError('');
+    
+    try {
+      // Upload image to ImgBB
+      const photoURL = await uploadImage(file);
+      
+      // Update Firebase Auth profile
+      await updateProfile(auth.currentUser, { photoURL });
+      
+      // Update user record in database
+      await set(ref(db, `users/${currentUser.uid}`), {
+        ...currentUser,
+        photoURL,
+      });
+      
+      // Force re-render by updating auth state
+      window.location.reload();
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      setPhotoError('Failed to upload photo. Please try again.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+  
   if (!currentUser) {
     return null;
   }
@@ -103,11 +150,60 @@ const ProfilePage: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700 mb-8">
         <div className="flex flex-col sm:flex-row items-center gap-6">
-          <div className="w-24 h-24 bg-purple-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
-            {currentUser.username ? currentUser.username.charAt(0).toUpperCase() : 'U'}
+          <div className="relative group">
+            {currentUser.photoURL ? (
+              <img 
+                src={currentUser.photoURL} 
+                alt={currentUser.username || 'Profile'}
+                className="w-24 h-24 rounded-full object-cover border-4 border-purple-200"
+              />
+            ) : (
+              <div className="w-24 h-24 bg-purple-600 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-purple-200">
+                {currentUser.username ? currentUser.username.charAt(0).toUpperCase() : 'U'}
+              </div>
+            )}
+            
+            {/* Photo upload overlay */}
+            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+              <label htmlFor="photo-upload" className="cursor-pointer">
+                <Camera className="text-white" size={24} />
+              </label>
+              <input
+                id="photo-upload"
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
+                disabled={isUploadingPhoto}
+              />
+            </div>
+            
+            {/* Loading overlay */}
+            <AnimatePresence>
+              {isUploadingPhoto && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center"
+                >
+                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
           
           <div className="flex-1 text-center sm:text-left">
+            {photoError && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-2 p-2 bg-red-50 text-red-600 text-sm rounded"
+              >
+                {photoError}
+              </motion.div>
+            )}
+            
             <div className="flex flex-col sm:flex-row items-center gap-2 mb-2">
               {isEditingUsername ? (
                 <div className="w-full sm:w-auto">
@@ -159,6 +255,9 @@ const ProfilePage: React.FC = () => {
             </div>
             <p className="text-gray-600 dark:text-gray-400">
               {currentUser.email}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Hover over your profile picture to change it
             </p>
             <div className="mt-4 flex flex-wrap justify-center sm:justify-start gap-3">
               <Button
