@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateProfile } from 'firebase/auth';
-import { auth } from '../firebase/config';
+import { auth, db } from '../firebase/config';
+import { ref, set } from 'firebase/database';
 import { getUserPosts, getUserLikedPosts, updatePostsUsername } from '../services/postService';
 import { uploadImage } from '../services/imgbbService';
 import { Post } from '../types';
