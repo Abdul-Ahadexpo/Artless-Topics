@@ -108,7 +108,12 @@ const PostPage: React.FC = () => {
         transition={{ duration: 0.3 }}
       >
         <div className="max-w-3xl mx-auto mb-12">
-          <PostCard post={post} showLink={false} />
+          <PostCard 
+            post={post} 
+            showLink={false}
+            onPostUpdate={(updatedPost) => setPost(updatedPost)}
+            onPostDelete={() => navigate('/')}
+          />
         </div>
         
         {relatedPosts.length > 0 && (

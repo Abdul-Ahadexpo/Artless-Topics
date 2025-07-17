@@ -6,12 +6,16 @@ interface PostGridProps {
   posts: Post[];
   loading?: boolean;
   emptyMessage?: string;
+  onPostUpdate?: (updatedPost: Post) => void;
+  onPostDelete?: (postId: string) => void;
 }
 
 const PostGrid: React.FC<PostGridProps> = ({ 
   posts, 
   loading = false,
-  emptyMessage = 'No posts found'
+  emptyMessage = 'No posts found',
+  onPostUpdate,
+  onPostDelete
 }) => {
   if (loading) {
     return (
@@ -40,7 +44,12 @@ const PostGrid: React.FC<PostGridProps> = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
+        <PostCard 
+          key={post.id} 
+          post={post} 
+          onPostUpdate={onPostUpdate}
+          onPostDelete={onPostDelete}
+        />
       ))}
     </div>
   );

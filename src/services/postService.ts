@@ -59,6 +59,72 @@ export const updatePostsUsername = async (userId: string, newUsername: string): 
   }
 };
 
+// Update profile picture in all user's posts
+export const updatePostsProfilePicture = async (userId: string, newPhotoURL: string): Promise<void> => {
+  try {
+    const postsRef = ref(db, 'posts');
+    const snapshot = await get(postsRef);
+    
+    if (snapshot.exists()) {
+      const updates: Record<string, any> = {};
+      
+      snapshot.forEach((childSnapshot) => {
+        const post = childSnapshot.val() as Post;
+        if (post.userId === userId) {
+          updates[`posts/${post.id}/userPhotoURL`] = newPhotoURL;
+        }
+      });
+      
+      if (Object.keys(updates).length > 0) {
+        await update(ref(db), updates);
+      }
+    }
+  } catch (error) {
+    console.error('Error updating posts profile picture:', error);
+    throw error;
+  }
+};
+
+// Update a post
+export const updatePost = async (postId: string, updates: Partial<Pick<Post, 'caption' | 'imageUrl'>>): Promise<void> => {
+  try {
+    const postRef = ref(db, `posts/${postId}`);
+    await update(postRef, updates);
+  } catch (error) {
+    console.error('Error updating post:', error);
+    throw error;
+  }
+};
+
+// Delete a post
+export const deletePost = async (postId: string): Promise<void> => {
+  try {
+    const postRef = ref(db, `posts/${postId}`);
+    await set(postRef, null);
+    
+    // Also remove all likes for this post
+    const likesRef = ref(db, 'likes');
+    const likesSnapshot = await get(likesRef);
+    
+    if (likesSnapshot.exists()) {
+      const updates: Record<string, any> = {};
+      likesSnapshot.forEach((childSnapshot) => {
+        const key = childSnapshot.key as string;
+        if (key.startsWith(`${postId}_`)) {
+          updates[`likes/${key}`] = null;
+        }
+      });
+      
+      if (Object.keys(updates).length > 0) {
+        await update(ref(db), updates);
+      }
+    }
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    throw error;
+  }
+};
+
 // Get all posts
 export const getAllPosts = async (): Promise<Post[]> => {
   try {

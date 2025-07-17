@@ -4,6 +4,7 @@ import { updateProfile } from 'firebase/auth';
 import { auth, db } from '../firebase/config';
 import { ref, set } from 'firebase/database';
 import { getUserPosts, getUserLikedPosts, updatePostsUsername } from '../services/postService';
+import { updatePostsProfilePicture } from '../services/postService';
 import { uploadImage } from '../services/imgbbService';
 import { Post } from '../types';
 import PostGrid from '../components/posts/PostGrid';
@@ -56,6 +57,24 @@ const ProfilePage: React.FC = () => {
     
     fetchUserContent();
   }, [currentUser, activeTab, navigate]);
+  
+  const handlePostUpdate = (updatedPost: Post) => {
+    if (activeTab === 'uploads') {
+      setUserPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.id === updatedPost.id ? updatedPost : post
+        )
+      );
+    }
+  };
+
+  const handlePostDelete = (postId: string) => {
+    if (activeTab === 'uploads') {
+      setUserPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+    } else {
+      setLikedPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+    }
+  };
   
   const handleLogout = async () => {
     try {
@@ -132,6 +151,9 @@ const ProfilePage: React.FC = () => {
         ...currentUser,
         photoURL,
       });
+      
+      // Update all user's posts with new profile picture
+      await updatePostsProfilePicture(currentUser.uid, photoURL);
       
       // Force re-render by updating auth state
       window.location.reload();
@@ -314,12 +336,15 @@ const ProfilePage: React.FC = () => {
           posts={userPosts} 
           loading={loading} 
           emptyMessage="You haven't uploaded any posts yet. Share your first image!"
+          onPostUpdate={handlePostUpdate}
+          onPostDelete={handlePostDelete}
         />
       ) : (
         <PostGrid 
           posts={likedPosts} 
           loading={loading} 
           emptyMessage="You haven't liked any posts yet. Start exploring!"
+          onPostDelete={handlePostDelete}
         />
       )}
     </div>

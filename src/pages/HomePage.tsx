@@ -28,6 +28,18 @@ const HomePage: React.FC = () => {
     fetchPosts();
   }, []);
 
+  const handlePostUpdate = (updatedPost: Post) => {
+    setPosts(prevPosts => 
+      prevPosts.map(post => 
+        post.id === updatedPost.id ? updatedPost : post
+      )
+    );
+  };
+
+  const handlePostDelete = (postId: string) => {
+    setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {currentUser && (
@@ -54,6 +66,8 @@ const HomePage: React.FC = () => {
         posts={posts} 
         loading={loading} 
         emptyMessage="No posts yet. Be the first to share an image!"
+        onPostUpdate={handlePostUpdate}
+        onPostDelete={handlePostDelete}
       />
 
       <UploadModal 
