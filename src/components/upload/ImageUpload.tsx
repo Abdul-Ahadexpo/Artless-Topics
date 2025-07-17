@@ -86,7 +86,8 @@ const ImageUpload: React.FC = () => {
         currentUser.uid,
         currentUser.username || 'Anonymous',
         imageUrl,
-        caption
+        caption,
+        currentUser.photoURL
       );
       
       setSuccess(true);
